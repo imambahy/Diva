@@ -172,7 +172,7 @@ def hear(mic, timeout=None):
 
 def find_name(words):
     for i, word in enumerate(words):
-        if len(word) >= 4 and difflib.get_close_matches(word, [NAME], cutoff=0.8):
+        if word == NAME:
             return i
     return None
 
@@ -222,7 +222,6 @@ def save_session():
     if len(history) < 2:
         return history.clear()
     transcript = "\n".join(f"{m['role']}: {m['content']}" for m in history)
-    history.clear()
     try:
         response = client.responses.create(
             model=MODEL,
@@ -234,6 +233,7 @@ def save_session():
         lines = [l for l in response.output_text.splitlines() if l.strip().startswith("-")]
     except Exception as error:
         return print("Memory error:", error)
+    history.clear()
     if lines:
         remember(lines)
         print(f"(Diva nyimpen {len(lines)} ingatan baru)")
@@ -273,7 +273,7 @@ def chat(text):
             history.pop()
             say("Maaf, otakku lagi error.")
             return False
-        reply, pending, calls = reply[: len(reply) - len(pending)], "", []
+        reply, pending = reply[: len(reply) - len(pending)], ""
     if pending.strip():
         if not spoken:
             print(f"(jawaban siap {time.time() - start:.1f}s)")
@@ -283,7 +283,12 @@ def chat(text):
     ends_chat = False
     for call in calls:
         print(f"(alat: {call.name} {call.arguments})")
-        ends_chat = run_tool(call.name, json.loads(call.arguments)) or ends_chat
+        try:
+            ends_chat = run_tool(call.name, json.loads(call.arguments)) or ends_chat
+        except Shutdown:
+            raise
+        except Exception as error:
+            print("Tool error:", error)
     return ends_chat
 
 
@@ -318,7 +323,7 @@ def play_song(query):
     except Exception as error:
         print("Spotify error:", error)
         return say("Maaf, gue gak bisa nyari lagunya sekarang.")
-    if not track:
+    if not track or not re.fullmatch(r"spotify:track:[A-Za-z0-9]+", track["uri"]):
         return say(f"Gue gak nemu lagu {query}.")
     say(f"Muter {track['name']} dari {track['artists'][0]['name']}.")
     subprocess.run(["osascript", "-e", f'tell application "Spotify" to play track "{track["uri"]}"'])
