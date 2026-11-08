@@ -1,0 +1,18 @@
+# Secrets
+.env
+
+# Personal data, never commit
+profile.md
+memory.md
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Generated audio
+.sample-*.mp3
+.reply.mp3
+
+# macOS
+.DS_Store
